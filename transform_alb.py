@@ -1,10 +1,8 @@
 import albumentations as albu
 from albumentations.pytorch.transforms import ToTensorV2
 
-
 def pre_transforms(image_size=96):
     return [albu.Resize(image_size, image_size, p=1)]
-
 
 def hard_transforms():
     result = [
@@ -16,9 +14,7 @@ def hard_transforms():
       albu.GridDistortion(p=0.3),
       albu.HueSaturationValue(p=0.3)
     ]
-
     return result
-  
 
 def resize_transforms(image_size=96):
     BORDER_CONSTANT = 0
@@ -29,7 +25,6 @@ def resize_transforms(image_size=96):
       albu.RandomCrop(
           image_size, image_size, p=1
       )
-
     ])
 
     rescale = albu.Compose([albu.Resize(image_size, image_size, p=1)])
@@ -41,7 +36,6 @@ def resize_transforms(image_size=96):
       )
 
     ])
-
     # Converts the image to a square of size image_size x image_size
     result = [
       albu.OneOf([
@@ -50,7 +44,6 @@ def resize_transforms(image_size=96):
           random_crop_big
       ], p=1)
     ]
-
     return result
   
 def post_transforms():

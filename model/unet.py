@@ -308,11 +308,11 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return logits
+        output = torch.sigmoid(logits)
+        return output
+
     
 
-unet_pretrain_model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-        in_channels=3, out_channels= 1, init_features= 32, pretrained= True)
-unet_pretrain_model = unet_pretrain_model.to(config.DEVICE)
+
 
 

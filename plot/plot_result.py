@@ -71,7 +71,7 @@ def plot_from_csv(csv_file):
         value8 = float(value_str8[start_index2:end_index2])
         val_f1.append(value8)
         
-    # 將數據轉換為 Pandas DataFrame
+    #Pandas DataFrame
     df = pd.DataFrame({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train PCC': train_accuracy, 'Val PCC': val_accuracy, 'Train dice': train_dice, 'Val dice': val_dice,'Train F1': train_f1, 'Val F1': val_f1 ,'Epoch': range(len(train_loss))})
     print(df.head())
     plt.figure(figsize=((30, 8)))
@@ -100,6 +100,7 @@ def plot_from_csv(csv_file):
     plt.xlabel('Epoch', fontsize=16)
     plt.ylabel('Dice', fontsize=16)
     plt.ylim(0, 1)
+    
     plt.legend(loc='lower right')
     
     plt.subplot(1, 4, 4)

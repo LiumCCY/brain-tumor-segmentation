@@ -20,7 +20,6 @@ from torch.optim import Adam
 from scipy.stats import pearsonr
 
 import config
-import time
 from tqdm.auto import tqdm
 import logging
 import matplotlib.pyplot as plt
@@ -28,13 +27,11 @@ import os
 
 '''Check cuda'''
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ["TORCH_USE_CUDA_DSA"] = "1"
 print(torch.cuda.is_available())
-torch.cuda.set_device(1)
-print(torch.cuda.current_device())
+torch.cuda.set_device(0)
 print(torch.__version__)
-#torch.cuda.get_device_name(0)
-#print(torch.cuda.device_count())
-torch.cuda.empty_cache()
+print(sys.version)
 
 '''Data ready'''
 train_img_path = '/home/b09508004/Data/Training/images/images'
@@ -43,10 +40,10 @@ train_label_path = '/home/b09508004/Data/Training/labels/labels'
 val_img_path = '/home/b09508004/Data/Validation/images/images'
 val_label_path = '/home/b09508004/Data/Validation/labels/labels'
 
-train_transform = RandomTransform(train_transform)
-test_transform = RandomTransform(test_transform)
-trainDS = Mydataset(image_dir=train_img_path, label_dir=train_label_path, transform=train_transform)
-valDS =  Mydataset(image_dir=val_img_path, label_dir=val_label_path, transform=test_transform)
+train_transforms = RandomTransform(train_transform)
+test_transforms = RandomTransform(test_transform)
+trainDS = Mydataset(image_dir=train_img_path, label_dir=train_label_path, transform=train_transforms)
+valDS =  Mydataset(image_dir=val_img_path, label_dir=val_label_path, transform=test_transforms)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(valDS)} examples in the test set...")
 
@@ -61,9 +58,9 @@ valSteps = len(valDS) // config.BATCH_SIZE
 
 '''Check image'''
 images, labels = next(iter(trainLoader))
-for i in range(8):
-    image = images[i]  # 假设 image 的形状为 (C, H, W)，C为通道数，H为高度，W为宽度
-    label = labels[i]  # 假设 label 的形状为 (C, H, W)
+for i in range(4):
+    image = images[i]
+    label = labels[i] 
     #print(image.shape)
     #print(label.shape)
     image = image.permute(1,2,0).numpy()
@@ -84,10 +81,9 @@ for i in range(8):
 
 '''Model'''
 unet = UNet(1,1).to(config.DEVICE)
-#resnetunet = UNetWithResnet50Encoder(1).to(config.DEVICE)
-resnetunet = ResUnet(1).to(config.DEVICE)
+#resnetunet = ResUnet(1).to(config.DEVICE)
 unet3plus = UNet_3Plus(1,1).to(config.DEVICE)
-model = unet3plus
+model = unet
 
 '''Loss function'''
 mse = nn.MSELoss()
@@ -108,22 +104,21 @@ train_iou = []
 val_iou = []
 train_f1 =[] 
 val_f1 =[]
-best_acc = 0.839
+best_acc = 0.0
 stale = 0
 
 '''Load'''
-trainloss, validloss, trainPCC, validPCC, train_iou, val_iou, train_f1, val_f1= load_(config.RECORD_PATH)
-model, _ = loadmodel(config.CHECKPOINT_PATHS, model, opt, device= config.DEVICE)
+#trainloss, validloss, trainPCC, validPCC, train_iou, val_iou, train_f1, val_f1= load_(config.RECORD_PATH)
+#model, _ = loadmodel(config.CHECKPOINT_PATHS, model, opt, device= config.DEVICE)
 '''Learning Rate adjustment'''
-new_learning_rate = 0.00001
-for param_group in opt.param_groups:
-    param_group['lr'] = new_learning_rate
+#new_learning_rate = 0.00001
+#for param_group in opt.param_groups:
+#    param_group['lr'] = new_learning_rate
 
 print("[INFO] training the network...")
-logging.basicConfig(filename='trainUNet3+.log', level=logging.INFO, filemode='a')
-startTime = time.time()
+logging.basicConfig(filename='trainUNet.log', level=logging.INFO, filemode='a')
 progress = tqdm(range(config.NUM_EPOCHS))
-gradient_accumulation_steps = 1
+gradient_accumulation_steps = 4
 
 for epoch in range(config.NUM_EPOCHS):
 	model.train()
@@ -136,10 +131,10 @@ for epoch in range(config.NUM_EPOCHS):
 
 	for batch_idx, (x, y) in enumerate(trainLoader):
 		#x = torch.cat([x,x,x],dim=1)
-		x = x.to(config.DEVICE)
-		y = y.to(config.DEVICE)
+		x = x.to(torch.float32).to(config.DEVICE)
+		y = y.to(torch.float32).to(config.DEVICE)
 		pred = model(x)
-  
+
 		train_loss = bce_dice_loss(pred,y)
 		totalTrainLoss += train_loss 
 
@@ -168,8 +163,8 @@ for epoch in range(config.NUM_EPOCHS):
 
 		for x, y in valLoader:
 			#x = torch.cat([x,x,x],dim=1)
-			x = x.to(config.DEVICE) 
-			y = y.to(config.DEVICE)
+			x = x.to(torch.float32).to(config.DEVICE) 
+			y = y.to(torch.float32).to(config.DEVICE)
    
 			pred = model(x)
 	
@@ -186,25 +181,18 @@ for epoch in range(config.NUM_EPOCHS):
 			
 	avgTrainLoss = totalTrainLoss / trainSteps
 	trainloss.append(avgTrainLoss)
-	
 	avgValLoss = totalValLoss / valSteps
 	validloss.append(avgValLoss)
-
 	avgTrainPCC = train_PCC/trainSteps
 	trainPCC.append(avgTrainPCC)
-	
 	avgValPCC = valid_PCC/valSteps
 	validPCC.append(avgValPCC)
- 
 	avgTrainiou = trainiou/trainSteps
 	train_iou.append(avgTrainiou)
-	
 	avgValiou = valiou/valSteps
 	val_iou.append(avgValiou)
-
 	avgTrainf1 = trainf1/trainSteps
 	train_f1.append(avgTrainiou)
-	
 	avgValf1 = validf1/valSteps
 	val_f1.append(avgValiou)
 
@@ -232,6 +220,3 @@ for epoch in range(config.NUM_EPOCHS):
 	current_lr = scheduler.optimizer.param_groups[0]['lr']
 	logging.info(f"Epoch {epoch + 1}/{epoch}, Train Loss: {avgTrainLoss}, Val Loss: {avgValLoss}, Train Accuracy: {avgTrainPCC}, Val Accuracy: {avgValPCC}, Train iou: {avgTrainiou}, Val iou: {avgValiou}, Train F1: {avgTrainf1}, Val F1: {avgValf1},Learning Rate: {current_lr}")
 	progress.update(1)
- 
-endTime = time.time()
-print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))

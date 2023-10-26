@@ -69,6 +69,8 @@ def Cross_entropy_plus_Dice_loss(pred, target, alpha=0.5):
     return combined_loss
 
 def bce_dice_loss(inputs, target):
+    inputs = torch.sigmoid(inputs)  
+    target = torch.sigmoid(target) 
     dicescore = dice_loss(inputs, target)
     bceloss = F.binary_cross_entropy(inputs, target)
     return bceloss + dicescore
